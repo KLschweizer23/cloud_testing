@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css" integrity="sha384-xOolHFLEh07PJGoPkLv1IbcEPTNtaed2xpHsD9ESMhqIYd0nLMwNLD69Npy4HI+N" crossorigin="anonymous">
+</head>
+<body class="text-center">
+    <label for="email">Email:</label><br>
+    <input type="email" id="email" name="email"><br>
+
+    <label for="name">Name:</label><br>
+    <input type="text" id="name" name="name"><br>
+    
+    <input class="btn btn-success" id="submitButton" type="button" value="Submit">
+    <br>
+    <button class="btn btn-primary mt-5" id="refresh" type="button" onclick="getData()">Refresh</button>
+    
+    <table class="table" id="dataTable">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    <script>
+
+        document.getElementById('submitButton').addEventListener('click', () => {
+            let name = document.getElementById('name').value;
+            let email = document.getElementById('email').value;
+
+            const dataToSend = {
+                'name': name,
+                'email': email
+            }
+
+            fetch('/persons/add-person', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(dataToSend)
+            })
+            .then(async response => {
+                alert(await response.text());
+            })
+        });
+
+        function getData() {
+            fetch('/persons/get-all')
+            .then(response => response.json())
+            .then(data => {
+                populateTable(data.rows);
+            })
+            .catch(error => {
+                console.log(error);
+                alert('Cannot get data');
+            })
+        }
+
+        function populateTable(data) {
+            const tableBody = document.getElementById('dataTable').getElementsByTagName('tbody')[0];
+
+            tableBody.innerHTML = '';
+
+            data.forEach(item => {
+                let row = tableBody.insertRow();
+                
+                let cell = row.insertCell();
+                cell.textContent = item.id;
+
+                cell = row.insertCell();
+                cell.textContent = item.name;
+
+                cell = row.insertCell();
+                cell.textContent = item.email;
+
+                cell = row.insertCell();
+                let deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.onclick = function() { deletePerson(item.id); };
+                cell.appendChild(deleteButton);
+
+                let dataRow = tableBody.insertRow();
+                let dataCell = dataRow.insertCell();
+                dataCell.id = `row-${item.id}`;
+                dataCell.style.height = '200px';
+                dataCell.style.margin = '0px';
+                dataCell.style.padding = '0px';
+                dataCell.setAttribute('colspan', '4');
+
+                let htmlString = `
+                <div class="container">
+                    <input type="file" id="fileInput_${item.id}">
+                    <button class="btn btn-success" onclick="uploadFile(id);" id="${item.id}">Upload</button>
+                    <button class="btn btn-primary" onclick="getFiles(id);" id="${item.id}">Get All Files</button>
+                    <div id="list_${item.id}">
+
+                    </div>
+                </div>`;
+
+                dataCell.innerHTML = htmlString;
+
+            });
+        }
+
+        function uploadFile(id) {
+            var fileInput = document.getElementById(`fileInput_${id}`);
+            if (fileInput.files.length > 0) {
+                var file = fileInput.files[0];
+                var formData = new FormData();
+                
+                formData.append('file', file);
+                formData.append('person_id', id);
+
+                fetch('/files/add-file', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(async response => alert(await response.text()));
+            } else {
+                alert('Please select a file to upload');
+            }
+        }
+
+        function getFiles(id) {
+            let formData = new FormData();
+            formData.append('person_id', id);
+
+            fetch('/files/get-file-lists', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({person_id: id})
+            }).then(async response => {
+                const data = await response.json();
+                let list = document.getElementById('list_' + id);
+                list.innerHTML = '';
+
+                const rows = data.rows;
+                let content = "";
+
+                for (var i = 0; i < rows.length; i++) {
+                    content += `<li><a onclick="downloadFile(id);" id="${rows[i].id}" style="cursor: pointer;">${rows[i].file_name}</a><button onclick="deleteFile(id)" id="${rows[i].id}">Delete File</button></li>`;
+                }
+
+                list.innerHTML = `<ul> ${content} </ul>`;
+
+            });
+        }
+
+        function deleteFile(id) {
+            fetch('/files/delete-file', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({id: id})
+            }).then(async response => alert(await response.text()));
+        }
+
+        async function downloadFile(id) {
+            const response = await fetch('/files/get-file-single', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({id: id})
+            });
+
+            if (response.ok) {
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let filename = "default-filename.ext";
+                if (contentDisposition) {
+                    const filenameMatch = contentDisposition.match(/filename="([^"]+)/);
+                    if (filenameMatch.length > 1) {
+                        filename = filenameMatch[1];
+                    }
+                }
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            }
+
+        }
+
+        function deletePerson(id) {
+            fetch('/persons/delete-person', {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 'id': id })
+            })
+            .then(response => {
+                if (response.status === 200) {
+                    alert('success');
+                } else {
+                    console.log(response);
+                    alert('Something is wrong');
+                }
+                getData()
+            })
+        }
+
+    </script>
+
+</body>
+</html>
