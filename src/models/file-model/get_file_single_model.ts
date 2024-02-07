@@ -15,7 +15,7 @@ const getFileSingleModel = async (req_body: any) => {
             const data = response.rows[0];
             const blobName = `${data.unique_string}_${data.file_name}`;
 
-            const blobClient = containerClient.getBlobClient(blobName);
+            const blobClient = containerClient.getBlobClient("sampleFiles/" + blobName);
             const downloadBlockBlobResponse = await blobClient.download();
             const readableStream = downloadBlockBlobResponse.readableStreamBody;
 

@@ -1,5 +1,6 @@
 import { Pool, PoolConfig } from 'pg';
 import fs from 'fs';
+import path from 'path';
 
 // Database access configuration
 // Enter here your postgres local database access credentials
@@ -19,7 +20,7 @@ const localDatabase: PoolConfig  = {
     host: process.env.host || "ken-cloud-test-psql.postgres.database.azure.com",
     port: parseInt(process.env.port || "5432"),
     ssl: {
-        ca: fs.readFileSync("../../DigiCertGlobalRootCA.crt.pem")
+        ca: fs.readFileSync(path.join(__dirname, "../../DigiCertGlobalRootCA.crt.pem"))
     }
 }
 
