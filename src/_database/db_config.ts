@@ -1,4 +1,5 @@
 import { Pool, PoolConfig } from 'pg';
+import fs from 'fs';
 
 // Database access configuration
 // Enter here your postgres local database access credentials
@@ -12,11 +13,14 @@ import { Pool, PoolConfig } from 'pg';
 // }
 
 const localDatabase: PoolConfig  = {
-    user: 'base',
-    password: 'base',
-    database: process.env.database || "",
-    host: process.env.host || "",
-    port: parseInt(process.env.port || "5432")
+    user: 'admin_base',
+    password: 'Kenbase123',
+    database: process.env.database || "postgres",
+    host: process.env.host || "ken-cloud-test-psql.postgres.database.azure.com",
+    port: parseInt(process.env.port || "5432"),
+    ssl: {
+        ca: fs.readFileSync("../../DigiCertGlobalRootCA.crt.pem")
+    }
 }
 
 const pool = new Pool(localDatabase);
